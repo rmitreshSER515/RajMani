@@ -29,6 +29,15 @@ class Graph(object):
         print(self.vertices)
         for i, v in enumerate(self.vertices):
             print(v, self.matrix[i])
+    
+    def print_d_and_pi(self, iteration, d, pi):
+        assert ((len(d) == len(self.vertices)) and
+               (len(pi) == len(self.vertices)))
+
+        print("Iteration: {0}".format(iteration))
+        for i, v in enumerate(self.vertices):
+            val = 'inf' if d[i] == sys.maxsize else d[i]
+            print("Vertex: {0}\td: {1}\tpi: {2}".format(v, val, pi[i]))
 
     def transpose(self):
         transposed_matrix = [[self.matrix[j][i] for j in range(len(self.matrix))] for i in range(len(self.matrix))]
@@ -39,18 +48,14 @@ class Graph(object):
         for i in range(len(self.vertices)):
             for j in range(len(self.vertices)):
                 degree[i] += self.matrix[j][i]
-        print("In degree of the graph:")
-        for vertex, degree in enumerate(degree, start=1):
-            print(f"Vertex: {vertex} Degree: {degree}")
+        self.print_degree(degree)
 
     def out_degree(self):
         out_degrees = [0] * len(self.vertices)
         for i in range(len(self.vertices)):
             for j in range(len(self.vertices)):
                 out_degrees[i] += self.matrix[i][j]
-        print("Out degree of the graph:")
-        for vertex, degree in enumerate(out_degrees, start=1):
-            print(f"Vertex: {vertex} Degree: {degree}")
+        self.print_degree(out_degrees)
 
     def dfs_visit(self, u, color, discovery, finish):
 
@@ -70,7 +75,6 @@ class Graph(object):
         discovery = [-1] * len(self.vertices)
         finish = [-1] * len(self.vertices)
         color = ["WHITE"] * len(self.vertices)  # WHITE: unvisited, GREY: visiting, BLACK: visited
-        # Visit each vertex
         for u in range(len(self.vertices)):
             if color[u] == "WHITE":
                 self.dfs_visit(u, color, discovery, finish)
@@ -79,12 +83,13 @@ class Graph(object):
     def prim(self, root):
         n = len(self.vertices)
         key = [math.inf] * n  # Keys to pick minimum weight edge
-        parent = [None] * n  # Store constructed MST
-        in_mst = [False] * n  # To keep track of vertices in MST
+        parent = [None] * n  
+        in_mst = [False] * n
         root_index = self.vertices.index(root)
         key[root_index] = 0
-        min_heap = [(0, root_index)]  # Min-heap as (key, vertex index)
-
+        min_heap = [(0, root_index)] 
+        self.print_d_and_pi("Initial", key, parent)
+        iteration = 0
         while min_heap:
             _, u = heapq.heappop(min_heap)
             if in_mst[u]:
@@ -98,21 +103,17 @@ class Graph(object):
                     key[v] = weight
                     parent[v] = self.vertices[u]
                     heapq.heappush(min_heap, (key[v], v))
-
-        # Print the MST
-        print("Minimum Spanning Tree:")
-        for i in range(n):
-            if parent[i] is not None:
-                print(f"{parent[i]} - {self.vertices[i]}: {key[i]}")
+            self.print_d_and_pi(iteration, key, parent)
+            iteration += 1
 
     def bellman_ford(self, source):
         n = len(self.vertices)
         d = [math.inf] * n  # Distance array initialized to infinity
-        pi = [None] * n  # Predecessor array for shortest paths
+        pi = [None] * n  
         source_index = self.vertices.index(source)
-        d[source_index] = 0  # Distance to source is 0
+        d[source_index] = 0  
+        self.print_d_and_pi("Initial", d, pi)
 
-        # Relax all edges |V|-1 times
         for i in range(n - 1):
             for edge in self.edges:
                 u = self.vertices.index(edge[0])
@@ -121,56 +122,28 @@ class Graph(object):
                 if d[u] != math.inf and d[v] > d[u] + weight:
                     d[v] = d[u] + weight
                     pi[v] = self.vertices[u]
-            self.print_d_and_pi(i + 1, d, pi)  # Optional: print the state of d and pi after each iteration
+            self.print_d_and_pi(i + 1, d, pi)
 
-        # Check for negative-weight cycles
-        for edge in self.edges:
-            u = self.vertices.index(edge[0])
-            v = self.vertices.index(edge[1])
-            weight = edge[2]
-            if d[u] != math.inf and d[v] > d[u] + weight:
-                print("Graph contains a negative-weight cycle.")
-                return
-
-        # Print the shortest paths
-        print("Shortest paths from source:", source)
-        for i, v in enumerate(self.vertices):
-            distance = 'inf' if d[i] == math.inf else d[i]
-            print(f"Vertex: {v}, Distance: {distance}, Predecessor: {pi[i]}")
     def dijkstra(self, source):
         n = len(self.vertices)
         d = [math.inf] * n  # Distance array, initialized to infinity
-        pi = [None] * n  # Parent array to store the shortest path tree
+        pi = [None] * n
         source_index = self.vertices.index(source)
         d[source_index] = 0  # Distance to the source is 0
         Q = [(0, source_index)]  # Priority queue initialized with the source
-
+        self.print_d_and_pi("Initial", d, pi)
+        iteration_count = 0
         while Q:
-            # Extract vertex u with the smallest distance value
             _, u = heapq.heappop(Q)
 
-            # Relax all edges from vertex u
             for v in range(n):
                 weight = self.matrix[u][v]
                 if weight != 0 and d[v] > d[u] + weight:
                     d[v] = d[u] + weight
                     pi[v] = self.vertices[u]
                     heapq.heappush(Q, (d[v], v))
-
-        # Print the shortest paths from the source
-        print("Shortest paths from source:", source)
-        for i, v in enumerate(self.vertices):
-            distance = 'inf' if d[i] == math.inf else d[i]
-            print(f"Vertex: {v}, Distance: {distance}, Predecessor: {pi[i]}")
-
-    def print_d_and_pi(self, iteration, d, pi):
-        assert ((len(d) == len(self.vertices)) and
-               (len(pi) == len(self.vertices)))
-
-        print("Iteration: {0}".format(iteration))
-        for i, v in enumerate(self.vertices):
-            val = 'inf' if d[i] == sys.maxsize else d[i]
-            print("Vertex: {0}\td: {1}\tpi: {2}".format(v, val, pi[i]))
+            iteration_count += 1
+            self.print_d_and_pi(iteration_count, d, pi)
 
     def print_discover_and_finish_time(self, discover, finish):
         assert ((len(discover) == len(self.vertices)) and
@@ -216,6 +189,7 @@ def main():
                    ('r', 'y', 1),
                    ('r', 'u', 1),
                    ('u', 'y', 1)])
+    print("DFS ON GRAPH")
     graph.display()
     graph.dfs_on_graph()
 
@@ -241,6 +215,7 @@ def main():
                    ('F', 'E', 8),
                    ('D', 'E', 15),
                    ('E', 'D', 15)])
+    print("Prim's Algorithm")
     graph.prim('G')
 
     # Q5
@@ -255,6 +230,7 @@ def main():
                    ('z', 's', 2),
                    ('s', 't', 6),
                    ('s', 'y', 7)])
+    print("Bellman ford algorithm")
     graph.bellman_ford('z')
 
     # Q5 alternate
@@ -269,6 +245,7 @@ def main():
                    ('z', 's', 2),
                    ('s', 't', 6),
                    ('s', 'y', 7)])
+    print("Bellman ford algorithm 2")
     graph.bellman_ford('s')
 
     # Q6
@@ -283,6 +260,7 @@ def main():
                    ('y', 'z', 6),
                    ('z', 's', 3),
                    ('z', 'x', 7)])
+    print("Dijiktras algorithm")
     graph.dijkstra('s')
 
 
