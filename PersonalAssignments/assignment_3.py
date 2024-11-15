@@ -52,89 +52,116 @@ class Graph(object):
         for vertex, degree in enumerate(out_degrees, start=1):
             print(f"Vertex: {vertex} Degree: {degree}")
 
+    def dfs_visit(self, u, color, discovery, finish):
+
+        color[u] = "GREY"
+        self.dfs_timer += 1
+        discovery[u] = self.dfs_timer
+        # Visit all adjacent vertices
+        for v in range(len(self.vertices)):
+            if self.matrix[u][v] != 0 and color[v] == "WHITE":
+                self.dfs_visit(v, color, discovery, finish)
+        color[u] = "BLACK"
+        self.dfs_timer += 1
+        finish[u] = self.dfs_timer
+
     def dfs_on_graph(self):
-        discover = [-1] * len(self.vertices)
-        finish = [-1] * len(self.vertices)
-        visited = [False] * len(self.vertices)
         self.dfs_timer = 0
-
-        def dfs_visit(u):
-            self.dfs_timer += 1
-            discover[u] = self.dfs_timer
-            visited[u] = True
-            for v in range(len(self.vertices)):
-                if self.matrix[u][v] != 0 and not visited[v]:
-                    dfs_visit(v)
-            self.dfs_timer += 1
-            finish[u] = self.dfs_timer
-
+        discovery = [-1] * len(self.vertices)
+        finish = [-1] * len(self.vertices)
+        color = ["WHITE"] * len(self.vertices)  # WHITE: unvisited, GREY: visiting, BLACK: visited
+        # Visit each vertex
         for u in range(len(self.vertices)):
-            if not visited[u]:
-                dfs_visit(u)
-        self.print_discover_and_finish_time(discover, finish)
+            if color[u] == "WHITE":
+                self.dfs_visit(u, color, discovery, finish)
+        self.print_discover_and_finish_time(discovery, finish)
 
     def prim(self, root):
         n = len(self.vertices)
-        selected = [False] * n
-        distance = [math.inf] * n
-        parent = [None] * n
+        key = [math.inf] * n  # Keys to pick minimum weight edge
+        parent = [None] * n  # Store constructed MST
+        in_mst = [False] * n  # To keep track of vertices in MST
         root_index = self.vertices.index(root)
-        distance[root_index] = 0
+        key[root_index] = 0
+        min_heap = [(0, root_index)]  # Min-heap as (key, vertex index)
 
-        for iteration in range(n):
-            min_distance = math.inf
-            u = -1
-            for i in range(n):
-                if not selected[i] and distance[i] < min_distance:
-                    min_distance = distance[i]
-                    u = i
+        while min_heap:
+            _, u = heapq.heappop(min_heap)
+            if in_mst[u]:
+                continue
+            in_mst[u] = True
 
-            selected[u] = True
-            self.print_d_and_pi(iteration, distance, parent)
-
+            # Iterate over all vertices adjacent to u
             for v in range(n):
-                if self.matrix[u][v] and not selected[v] and self.matrix[u][v] < distance[v]:
-                    distance[v] = self.matrix[u][v]
+                weight = self.matrix[u][v]
+                if weight != 0 and not in_mst[v] and weight < key[v]:
+                    key[v] = weight
                     parent[v] = self.vertices[u]
+                    heapq.heappush(min_heap, (key[v], v))
+
+        # Print the MST
+        print("Minimum Spanning Tree:")
+        for i in range(n):
+            if parent[i] is not None:
+                print(f"{parent[i]} - {self.vertices[i]}: {key[i]}")
 
     def bellman_ford(self, source):
         n = len(self.vertices)
-        distance = [math.inf] * n
-        parent = [None] * n
+        d = [math.inf] * n  # Distance array initialized to infinity
+        pi = [None] * n  # Predecessor array for shortest paths
         source_index = self.vertices.index(source)
-        distance[source_index] = 0
+        d[source_index] = 0  # Distance to source is 0
 
-        for iteration in range(n - 1):
-            for u in range(n):
-                for v in range(n):
-                    if self.matrix[u][v] != 0:
-                        if distance[u] + self.matrix[u][v] < distance[v]:
-                            distance[v] = distance[u] + self.matrix[u][v]
-                            parent[v] = self.vertices[u]
-            self.print_d_and_pi(iteration, distance, parent)
+        # Relax all edges |V|-1 times
+        for i in range(n - 1):
+            for edge in self.edges:
+                u = self.vertices.index(edge[0])
+                v = self.vertices.index(edge[1])
+                weight = edge[2]
+                if d[u] != math.inf and d[v] > d[u] + weight:
+                    d[v] = d[u] + weight
+                    pi[v] = self.vertices[u]
+            self.print_d_and_pi(i + 1, d, pi)  # Optional: print the state of d and pi after each iteration
 
+        # Check for negative-weight cycles
+        for edge in self.edges:
+            u = self.vertices.index(edge[0])
+            v = self.vertices.index(edge[1])
+            weight = edge[2]
+            if d[u] != math.inf and d[v] > d[u] + weight:
+                print("Graph contains a negative-weight cycle.")
+                return
+
+        # Print the shortest paths
+        print("Shortest paths from source:", source)
+        for i, v in enumerate(self.vertices):
+            distance = 'inf' if d[i] == math.inf else d[i]
+            print(f"Vertex: {v}, Distance: {distance}, Predecessor: {pi[i]}")
     def dijkstra(self, source):
         n = len(self.vertices)
-        distance = [math.inf] * n
-        parent = [None] * n
+        d = [math.inf] * n  # Distance array, initialized to infinity
+        pi = [None] * n  # Parent array to store the shortest path tree
         source_index = self.vertices.index(source)
-        distance[source_index] = 0
-        min_heap = [(0, source_index)]
-        iteration = 0
+        d[source_index] = 0  # Distance to the source is 0
+        Q = [(0, source_index)]  # Priority queue initialized with the source
 
-        while min_heap:
-            d, u = heapq.heappop(min_heap)
-            if distance[u] < d:
-                continue
-            self.print_d_and_pi(iteration, distance, parent)
-            iteration += 1
+        while Q:
+            # Extract vertex u with the smallest distance value
+            _, u = heapq.heappop(Q)
+
+            # Relax all edges from vertex u
             for v in range(n):
-                if self.matrix[u][v] != 0:
-                    alt = distance[u] + self.matrix[u][v]
-                    if alt < distance[v]:
-                        distance[v] = alt
-                        parent[v] = self.vertices[u]
-                        heapq.heappush(min_heap, (alt, v))
+                weight = self.matrix[u][v]
+                if weight != 0 and d[v] > d[u] + weight:
+                    d[v] = d[u] + weight
+                    pi[v] = self.vertices[u]
+                    heapq.heappush(Q, (d[v], v))
+
+        # Print the shortest paths from the source
+        print("Shortest paths from source:", source)
+        for i, v in enumerate(self.vertices):
+            distance = 'inf' if d[i] == math.inf else d[i]
+            print(f"Vertex: {v}, Distance: {distance}, Predecessor: {pi[i]}")
 
     def print_d_and_pi(self, iteration, d, pi):
         assert ((len(d) == len(self.vertices)) and
